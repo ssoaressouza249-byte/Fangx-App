@@ -40,13 +40,13 @@ jobs:
           if [ -f "build.gradle.kts" ]; then
             sed -i '/google-services/d' build.gradle.kts
             sed -i '/secrets-gradle-plugin/d' build.gradle.kts
+            sed -i '/kotlin.android/d' build.gradle.kts
           fi
 
-          # Reescreve app/build.gradle.kts usando IDs diretos sem depender do catalogo
+          # AGP 9.0+ ja inclui Kotlin nativamente (sem org.jetbrains.kotlin.android)
           cat << 'EOF' > app/build.gradle.kts
           plugins {
               id("com.android.application")
-              id("org.jetbrains.kotlin.android")
               id("org.jetbrains.kotlin.plugin.compose")
           }
 
@@ -75,10 +75,6 @@ jobs:
               compileOptions {
                   sourceCompatibility = JavaVersion.VERSION_17
                   targetCompatibility = JavaVersion.VERSION_17
-              }
-
-              kotlinOptions {
-                  jvmTarget = "17"
               }
 
               buildFeatures {
