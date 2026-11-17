@@ -30,11 +30,18 @@ jobs:
 
       - name: Auto-Fix & Clean Project Conflicts
         run: |
-          if [ -d "app/src/main/java/com/raylan" ] && [ -d "app/src/main/java/com/example" ]; then
-            echo "Removendo pacote duplicado com/example..."
-            rm -rf app/src/main/java/com/example
+          # 1. Preserva o tema (Color.kt, Theme.kt, Type.kt) de com/example para com/raylan/fangx
+          if [ -d "app/src/main/java/com/example/ui/theme" ]; then
+            mkdir -p app/src/main/java/com/raylan/fangx/ui/theme
+            cp -rf app/src/main/java/com/example/ui/theme/* app/src/main/java/com/raylan/fangx/ui/theme/
+            sed -i 's/package com\.example\.ui\.theme/package com.raylan.fangx.ui.theme/g' app/src/main/java/com/raylan/fangx/ui/theme/*.kt
           fi
 
+          # 2. Atualiza qualquer import de com.example para com.raylan.fangx nos arquivos Kotlin
+          find app/src/main/java/com/raylan -name "*.kt" -type f -exec sed -i 's/import com\.example\./import com.raylan.fangx./g' {} +
+
+          # 3. Remove apenas a MainActivity duplicada e testes antigos
+          rm -rf app/src/main/java/com/example
           rm -rf app/src/test app/src/androidTest
 
           if [ -f "build.gradle.kts" ]; then
@@ -43,7 +50,7 @@ jobs:
             sed -i '/kotlin.android/d' build.gradle.kts
           fi
 
-          # AGP 9.0+ ja inclui Kotlin nativamente (sem org.jetbrains.kotlin.android)
+          # 4. Configura app/build.gradle.kts com buildConfig = true e Compose
           cat << 'EOF' > app/build.gradle.kts
           plugins {
               id("com.android.application")
@@ -79,6 +86,7 @@ jobs:
 
               buildFeatures {
                   compose = true
+                  buildConfig = true
               }
 
               lint {
