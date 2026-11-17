@@ -1,4 +1,4 @@
-name: Build Android APK (Blindado)
+name: Build Android APK (Original AI Studio)
 
 on:
   push:
@@ -28,21 +28,8 @@ jobs:
             rm -rf temp_extract "$ZIP_FILE"
           fi
 
-      - name: Auto-Fix & Clean Project Conflicts
+      - name: Clean template extras & enforce SDK 36
         run: |
-          # 1. Copia o tema para com/raylan/fangx/ui/theme mantendo o original em com/example para a MainActivity
-          if [ -d "app/src/main/java/com/example/ui/theme" ]; then
-            mkdir -p app/src/main/java/com/raylan/fangx/ui/theme
-            cp -rf app/src/main/java/com/example/ui/theme/* app/src/main/java/com/raylan/fangx/ui/theme/
-            sed -i 's/package com\.example\.ui\.theme/package com.raylan.fangx.ui.theme/g' app/src/main/java/com/raylan/fangx/ui/theme/*.kt
-          fi
-
-          # 2. Atualiza imports de tema, R e BuildConfig para com.raylan.fangx (mantendo com.example.MainActivity)
-          find app/src/main/java -name "*.kt" -type f -exec sed -i 's/import com\.example\.ui\./import com.raylan.fangx.ui./g' {} +
-          find app/src/main/java -name "*.kt" -type f -exec sed -i 's/import com\.example\.R$/import com.raylan.fangx.R/g' {} +
-          find app/src/main/java -name "*.kt" -type f -exec sed -i 's/import com\.example\.BuildConfig$/import com.raylan.fangx.BuildConfig/g' {} +
-
-          # 3. Remove apenas testes antigos que falham sem dependencias extras
           rm -rf app/src/test app/src/androidTest
 
           if [ -f "build.gradle.kts" ]; then
@@ -51,7 +38,7 @@ jobs:
             sed -i '/kotlin.android/d' build.gradle.kts
           fi
 
-          # 4. Configura app/build.gradle.kts com buildConfig = true e Compose
+          # Mantem namespace e applicationId originais ("com.example") para nao disparar o SecurityGuard
           cat << 'EOF' > app/build.gradle.kts
           plugins {
               id("com.android.application")
@@ -59,11 +46,11 @@ jobs:
           }
 
           android {
-              namespace = "com.raylan.fangx"
+              namespace = "com.example"
               compileSdk = 36
 
               defaultConfig {
-                  applicationId = "com.raylan.fangx"
+                  applicationId = "com.example"
                   minSdk = 26
                   targetSdk = 36
                   versionCode = 1
