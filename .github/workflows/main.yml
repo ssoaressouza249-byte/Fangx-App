@@ -30,18 +30,17 @@ jobs:
 
       - name: Auto-Fix & Clean Project Conflicts
         run: |
-          # 1. Preserva o tema (Color.kt, Theme.kt, Type.kt) de com/example para com/raylan/fangx
+          # 1. Copia o tema para com/raylan/fangx/ui/theme mantendo o original em com/example para a MainActivity
           if [ -d "app/src/main/java/com/example/ui/theme" ]; then
             mkdir -p app/src/main/java/com/raylan/fangx/ui/theme
             cp -rf app/src/main/java/com/example/ui/theme/* app/src/main/java/com/raylan/fangx/ui/theme/
             sed -i 's/package com\.example\.ui\.theme/package com.raylan.fangx.ui.theme/g' app/src/main/java/com/raylan/fangx/ui/theme/*.kt
           fi
 
-          # 2. Atualiza qualquer import de com.example para com.raylan.fangx nos arquivos Kotlin
-          find app/src/main/java/com/raylan -name "*.kt" -type f -exec sed -i 's/import com\.example\./import com.raylan.fangx./g' {} +
+          # 2. Atualiza imports de tema em com/raylan, mas preserva import com.example.MainActivity
+          find app/src/main/java/com/raylan -name "*.kt" -type f -exec sed -i 's/import com\.example\.ui\./import com.raylan.fangx.ui./g' {} +
 
-          # 3. Remove apenas a MainActivity duplicada e testes antigos
-          rm -rf app/src/main/java/com/example
+          # 3. Remove apenas testes antigos que falham sem dependencias extras
           rm -rf app/src/test app/src/androidTest
 
           if [ -f "build.gradle.kts" ]; then
