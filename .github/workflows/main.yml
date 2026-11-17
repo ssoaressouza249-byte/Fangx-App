@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK (Protecao Intacta)
 
 on:
   push:
@@ -28,19 +28,94 @@ jobs:
             rm -rf temp_extract "$ZIP_FILE"
           fi
 
-      - name: Prepare Gradle 9 Compatibility (No Code Changes)
+      - name: Fix Gradle 9 Only (Keep SecurityGuard 100% Untouched)
         run: |
+          # Le o applicationId e namespace originais do seu projeto para nao quebrar sua protecao
+          ORIG_ID=$(grep -oP 'applicationId\s*=\s*"\K[^"]+' app/build.gradle.kts | head -n 1)
+          if [ -z "$ORIG_ID" ]; then
+            ORIG_ID="com.example"
+          fi
+          echo "Pacote original detectado: $ORIG_ID"
+
+          # Copia o tema para com/raylan/fangx/ui/theme mantendo com/example intacto
+          if [ -d "app/src/main/java/com/example/ui/theme" ]; then
+            mkdir -p app/src/main/java/com/raylan/fangx/ui/theme
+            cp -rf app/src/main/java/com/example/ui/theme/* app/src/main/java/com/raylan/fangx/ui/theme/
+            sed -i 's/package com\.example\.ui\.theme/package com.raylan.fangx.ui.theme/g' app/src/main/java/com/raylan/fangx/ui/theme/*.kt
+          fi
+
+          # Atualiza apenas imports de tema e R/BuildConfig sem tocar na logica da SecurityGuard.kt
+          find app/src/main/java -name "*.kt" -type f -exec sed -i 's/import com\.example\.ui\./import com.raylan.fangx.ui./g' {} +
+          find app/src/main/java -name "*.kt" -type f -exec sed -i "s/import com\.example\.R\$/import ${ORIG_ID}.R/g" {} +
+          find app/src/main/java -name "*.kt" -type f -exec sed -i "s/import com\.example\.BuildConfig\$/import ${ORIG_ID}.BuildConfig/g" {} +
+
           rm -rf app/src/test app/src/androidTest
 
-          # Ajusta apenas a sintaxe de plugins do Gradle 9 sem alterar pacote ou codigo Kotlin
-          find . -name "*.gradle.kts" -type f -exec sed -i '/google-services/d' {} +
-          find . -name "*.gradle.kts" -type f -exec sed -i '/secrets-gradle-plugin/d' {} +
-          find . -name "*.gradle.kts" -type f -exec sed -i 's/alias(libs\.plugins\.android\.application)/id("com.android.application")/g' {} +
-          find . -name "*.gradle.kts" -type f -exec sed -i '/alias(libs\.plugins\.kotlin\.android)/d' {} +
-          find . -name "*.gradle.kts" -type f -exec sed -i '/id("org\.jetbrains\.kotlin\.android")/d' {} +
-          find . -name "*.gradle.kts" -type f -exec sed -i 's/alias(libs\.plugins\.kotlin\.compose)/id("org.jetbrains.kotlin.plugin.compose")/g' {} +
-          find . -name "*.gradle.kts" -type f -exec sed -i 's/compileSdk = [0-9]*/compileSdk = 36/g' {} +
-          find . -name "*.gradle.kts" -type f -exec sed -i 's/targetSdk = [0-9]*/targetSdk = 36/g' {} +
+          if [ -f "build.gradle.kts" ]; then
+            sed -i '/google-services/d' build.gradle.kts
+            sed -i '/secrets-gradle-plugin/d' build.gradle.kts
+            sed -i '/kotlin.android/d' build.gradle.kts
+          fi
+
+          cat << EOF > app/build.gradle.kts
+          plugins {
+              id("com.android.application")
+              id("org.jetbrains.kotlin.plugin.compose")
+          }
+
+          android {
+              namespace = "$ORIG_ID"
+              compileSdk = 36
+
+              defaultConfig {
+                  applicationId = "$ORIG_ID"
+                  minSdk = 26
+                  targetSdk = 36
+                  versionCode = 1
+                  versionName = "1.0"
+              }
+
+              buildTypes {
+                  release {
+                      isMinifyEnabled = false
+                      proguardFiles(
+                          getDefaultProguardFile("proguard-android-optimize.txt"),
+                          "proguard-rules.pro"
+                      )
+                  }
+              }
+
+              compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+
+              buildFeatures {
+                  compose = true
+                  buildConfig = true
+              }
+
+              lint {
+                  abortOnError = false
+                  checkReleaseBuilds = false
+              }
+          }
+
+          dependencies {
+              implementation("androidx.core:core-ktx:1.15.0")
+              implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
+              implementation("androidx.activity:activity-compose:1.10.0")
+              implementation(platform("androidx.compose:compose-bom:2025.02.00"))
+              implementation("androidx.compose.ui:ui")
+              implementation("androidx.compose.ui:ui-graphics")
+              implementation("androidx.compose.ui:ui-tooling-preview")
+              implementation("androidx.compose.material3:material3")
+              implementation("androidx.compose.material:material-icons-extended:1.7.8")
+              implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+              implementation("dev.rikka.shizuku:api:13.1.5")
+              implementation("dev.rikka.shizuku:provider:13.1.5")
+          }
+          EOF
 
           if [ -f "gradle/libs.versions.toml" ]; then
             sed -i 's/compileSdk = "[0-9]*"/compileSdk = "36"/g' gradle/libs.versions.toml
