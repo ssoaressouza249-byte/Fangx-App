@@ -37,8 +37,10 @@ jobs:
             sed -i 's/package com\.example\.ui\.theme/package com.raylan.fangx.ui.theme/g' app/src/main/java/com/raylan/fangx/ui/theme/*.kt
           fi
 
-          # 2. Atualiza imports de tema em com/raylan, mas preserva import com.example.MainActivity
-          find app/src/main/java/com/raylan -name "*.kt" -type f -exec sed -i 's/import com\.example\.ui\./import com.raylan.fangx.ui./g' {} +
+          # 2. Atualiza imports de tema, R e BuildConfig para com.raylan.fangx (mantendo com.example.MainActivity)
+          find app/src/main/java -name "*.kt" -type f -exec sed -i 's/import com\.example\.ui\./import com.raylan.fangx.ui./g' {} +
+          find app/src/main/java -name "*.kt" -type f -exec sed -i 's/import com\.example\.R$/import com.raylan.fangx.R/g' {} +
+          find app/src/main/java -name "*.kt" -type f -exec sed -i 's/import com\.example\.BuildConfig$/import com.raylan.fangx.BuildConfig/g' {} +
 
           # 3. Remove apenas testes antigos que falham sem dependencias extras
           rm -rf app/src/test app/src/androidTest
