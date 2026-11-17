@@ -28,9 +28,9 @@ jobs:
             rm -rf temp_extract "$ZIP_FILE"
           fi
 
-      - name: Fix Gradle 9 Only (Keep SecurityGuard 100% Untouched)
+      - name: Configure Gradle 9 (Keep SecurityGuard 100% Untouched)
         run: |
-          # Le o applicationId e namespace originais do seu projeto para nao quebrar sua protecao
+          # Detecta o applicationId e namespace originais do seu ZIP sem alterar sua protecao
           ORIG_ID=$(grep -oP 'applicationId\s*=\s*"\K[^"]+' app/build.gradle.kts | head -n 1)
           if [ -z "$ORIG_ID" ]; then
             ORIG_ID="com.example"
@@ -44,7 +44,7 @@ jobs:
             sed -i 's/package com\.example\.ui\.theme/package com.raylan.fangx.ui.theme/g' app/src/main/java/com/raylan/fangx/ui/theme/*.kt
           fi
 
-          # Atualiza apenas imports de tema e R/BuildConfig sem tocar na logica da SecurityGuard.kt
+          # Ajusta apenas imports de tema e R/BuildConfig sem tocar na logica da SecurityGuard.kt
           find app/src/main/java -name "*.kt" -type f -exec sed -i 's/import com\.example\.ui\./import com.raylan.fangx.ui./g' {} +
           find app/src/main/java -name "*.kt" -type f -exec sed -i "s/import com\.example\.R\$/import ${ORIG_ID}.R/g" {} +
           find app/src/main/java -name "*.kt" -type f -exec sed -i "s/import com\.example\.BuildConfig\$/import ${ORIG_ID}.BuildConfig/g" {} +
